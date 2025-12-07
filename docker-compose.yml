@@ -1,0 +1,28 @@
+# FFmpeg MCP Server - 一键部署
+# 使用: docker compose pull && docker compose up -d
+
+services:
+  # MCP 服务器 (通过 Cursor MCP 调用)
+  ffmpeg-mcp-server:
+    image: zuozuoliang999/ffmpeg-mcp-server:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    stdin_open: true
+    tty: true
+
+  # 依赖镜像 (预拉取)
+  ffmpeg:
+    image: zuozuoliang999/ffmpeg:7.1-cli
+    command: ["-version"]
+    profiles: ["pull-only"]
+
+  imagemagick:
+    image: zuozuoliang999/imagemagick:latest
+    entrypoint: ["magick", "-version"]
+    profiles: ["pull-only"]
+
+  busybox:
+    image: zuozuoliang999/busybox:latest
+    command: ["echo", "ready"]
+    profiles: ["pull-only"]
+
