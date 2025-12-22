@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 """
-FFmpeg MCP Server - 与官方 API 一致的优化版
-解决 Windows 路径兼容性问题 (官方 {{basedir}}:{{basedir}} 在 Windows 上不工作)
+FFmpeg MCP Server - 强制盘符根目录映射版 v1.2.0
+
+⚠️ 核心强制规则（已固化到代码）:
+---------------------------------------
+basedir 必须使用盘符根目录 (D:/, E:/, C:/)
+任何子目录会被自动规范化为盘符根目录并发出警告！
+
+解决的问题:
+- 官方 {{basedir}}:{{basedir}} 在 Windows 上不工作
+- 子目录映射导致容器内路径无法识别
+- 实战证明：只有盘符根目录映射才可靠稳定
+
+实战经验 sha256:b98d601b439325dd0216074d1d3c8b94e382889368a27eb70a1a2fdad15a5785
 """
 
 import subprocess
@@ -33,28 +44,44 @@ def convert_windows_path(basedir: str) -> tuple:
     """
     将 Windows 路径转换为 Docker 兼容格式
     
-    官方设计: volumes: ['{{basedir}}:{{basedir}}']
-    问题: D:/tecx/text:D:/tecx/text 在 Linux 容器内无效
+    ⚠️ 强制规则（已固化到代码）：
+    ------------------------------------
+    basedir 应该是盘符根目录（如 D:/, E:/）
+    任何子目录都会被自动规范化为盘符根目录！
     
-    优化方案: 映射整个盘符！
-    - D:/tecx/text -> volumes: D:/:/work, 容器内: /work/tecx/text
-    - 这样路径结构保持一致，更简单可靠
+    实战经验证明这是唯一可靠的路径映射方式：
+    - ✅ basedir = "D:/"          -> volume: D:/:/work
+    - ✅ basedir = "D:/subfolder" -> 自动修正为 D:/, volume: D:/:/work (带警告)
+    - ✅ basedir = "E:/"          -> volume: E:/:/work
+    
+    为什么强制使用盘符根目录？
+    1. Docker 的卷映射在 Windows 上必须映射整个盘符
+    2. 子目录映射在 Linux 容器内无法正确识别 Windows 路径格式
+    3. 实战测试：D:/subfolder 作为 basedir 会导致 "No such file or directory"
     
     Returns:
-        tuple: (docker_volume_mount, container_path_prefix, original_subpath)
+        tuple: (docker_volume_mount, normalized_basedir)
     """
-    basedir = basedir.replace("\\", "/")
+    basedir = basedir.replace("\\", "/").rstrip('/')
     
     # 检测 Windows 路径 (如 D:/tecx/text 或 C:/Users/...)
     match = re.match(r'^([A-Za-z]:)/?(.*)', basedir)
     if match:
         drive = match.group(1)  # D:
-        subpath = match.group(2)  # tecx/text
-        # 映射整个盘符到 /work
+        subpath = match.group(2)  # 可能的子路径，例如 "tecx/text"
+        
+        # ⚠️ 强制规范化：始终使用盘符根目录
+        if subpath:
+            print(f"⚠️ 警告: basedir 应该使用盘符根目录！", file=sys.stderr)
+            print(f"   输入: {basedir}", file=sys.stderr)
+            print(f"   自动修正为: {drive}/", file=sys.stderr)
+            print(f"   建议: 请在调用时直接使用 '{drive}/' 作为 basedir", file=sys.stderr)
+        
+        # 映射整个盘符到 /work（强制规则）
         volume_mount = f"{drive}/:/work"
-        # 容器内完整路径
-        container_path = f"/work/{subpath}" if subpath else "/work"
-        return volume_mount, container_path.rstrip('/')
+        normalized_basedir = f"{drive}/"
+        
+        return volume_mount, normalized_basedir
     else:
         # Linux/Mac 路径 -> 官方模式 (basedir:basedir)
         return f"{basedir}:{basedir}", basedir
@@ -261,11 +288,12 @@ def file_exists(path: str, basedir: str = "") -> dict:
         }
 
 # 工具定义 - Windows 兼容版（重命名避免与 mcp-docker 冲突）
-# 固化规则: 自动将 Windows 路径 (D:/xxx) 转换为容器路径 (/work/xxx)
+# ⚠️ 强制规则（已固化到代码）: basedir 必须使用盘符根目录 (D:/, E:/)
+# 任何子目录会被自动规范化为盘符根目录！
 TOOLS = [
     {
         "name": "ffmpeg-win",
-        "description": "Run FFmpeg command with AUTO Windows path conversion. Paths like D:/path/file.mp4 are automatically converted to /work/path/file.mp4",
+        "description": "Run FFmpeg command with AUTO Windows path conversion. Paths like D:/path/file.mp4 are automatically converted to /work/path/file.mp4. ⚠️ IMPORTANT: basedir MUST be drive root (D:/, E:/), NOT subdirectory. Subdirectories are auto-corrected with warning.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -276,7 +304,7 @@ TOOLS = [
                 },
                 "basedir": {
                     "type": "string",
-                    "description": "base directory (e.g. D:/tecx/text). The drive letter will be mapped to /work"
+                    "description": "⚠️ MUST BE DRIVE ROOT: D:/, E:/, C:/ etc. Do NOT use subdirectories! Example: Use 'D:/' not 'D:/videos'"
                 }
             },
             "required": ["basedir", "args"]
@@ -284,7 +312,7 @@ TOOLS = [
     },
     {
         "name": "imagemagick-win",
-        "description": "Run ImageMagick command with AUTO Windows path conversion. Paths like D:/path/file.jpg are automatically converted",
+        "description": "Run ImageMagick command with AUTO Windows path conversion. Paths like D:/path/file.jpg are automatically converted. ⚠️ IMPORTANT: basedir MUST be drive root (D:/, E:/), NOT subdirectory.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -294,7 +322,7 @@ TOOLS = [
                 },
                 "basedir": {
                     "type": "string",
-                    "description": "base directory for file paths (e.g. D:/tecx/text)"
+                    "description": "⚠️ MUST BE DRIVE ROOT: D:/, E:/, C:/ etc. Do NOT use subdirectories! Will be auto-extracted from args if not provided."
                 }
             },
             "required": ["args"]
@@ -302,13 +330,13 @@ TOOLS = [
     },
     {
         "name": "file-exists-win",
-        "description": "Check if a file exists with AUTO Windows path conversion",
+        "description": "Check if a file exists with AUTO Windows path conversion. ⚠️ IMPORTANT: Drive letter is auto-extracted and forced to root (D:/, E:/).",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Full file path (e.g. D:/tecx/text/file.jpg). Auto-converts to container path"
+                    "description": "Full file path (e.g. D:/jianji_FFMPEG/video.mp4). Drive root (D:/) is auto-extracted and normalized."
                 }
             },
             "required": ["path"]
@@ -330,7 +358,7 @@ def handle_request(request: dict):
             },
             "serverInfo": {
                 "name": "ffmpeg-mcp",
-                "version": "1.1.0-auto-path-convert"
+                "version": "1.2.0-force-drive-root"
             }
         })
     
@@ -349,22 +377,23 @@ def handle_request(request: dict):
         
         elif tool_name == "imagemagick-win":
             args = arguments.get("args", "")
-            # 优先使用显式传入的 basedir，否则从 args 中提取
+            # 优先使用显式传入的 basedir，否则从 args 中提取盘符根目录
             basedir = arguments.get("basedir", "")
             if not basedir:
-                match = re.search(r'([A-Za-z]:[/\\][^\s]+)', args)
+                # 从 args 中提取 Windows 路径并强制使用盘符根目录
+                match = re.search(r'([A-Za-z]):[/\\]', args)
                 if match:
-                    basedir = match.group(1).rsplit('/', 1)[0].rsplit('\\', 1)[0]
+                    basedir = f"{match.group(1)}:/"
             result = run_imagemagick(args, basedir)
             send_result(id, {"content": [{"type": "text", "text": json.dumps(result, indent=2, ensure_ascii=False)}]})
         
         elif tool_name == "file-exists-win":
             path = arguments.get("path", "")
-            # 从 path 中提取 basedir
+            # 从 path 中提取盘符并强制使用根目录
             basedir = ""
-            match = re.search(r'([A-Za-z]:[/\\][^\s]+)', path)
+            match = re.search(r'([A-Za-z]):[/\\]', path)
             if match:
-                basedir = match.group(1).rsplit('/', 1)[0].rsplit('\\', 1)[0]
+                basedir = f"{match.group(1)}:/"
             result = file_exists(path, basedir)
             send_result(id, {"content": [{"type": "text", "text": json.dumps(result, indent=2, ensure_ascii=False)}]})
         
