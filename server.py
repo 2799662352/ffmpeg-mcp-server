@@ -59,6 +59,28 @@ def convert_windows_path(basedir: str) -> tuple:
         # Linux/Mac 路径 -> 官方模式 (basedir:basedir)
         return f"{basedir}:{basedir}", basedir
 
+def convert_any_windows_path(arg: str) -> str:
+    """
+    自动转换任意 Windows 路径为容器路径
+    
+    转换规则:
+        D:/any/path/file.mp4 -> /work/any/path/file.mp4
+        C:/Users/test.jpg -> /work/Users/test.jpg
+    
+    这样用户可以直接使用 Windows 路径，无需手动转换！
+    """
+    arg = arg.replace("\\", "/")
+    
+    # 检测 Windows 路径格式 (如 D:/xxx 或 C:/xxx)
+    match = re.match(r'^([A-Za-z]):/(.*)', arg)
+    if match:
+        # drive = match.group(1)  # D: (盘符信息保留用于 volume mount)
+        subpath = match.group(2)  # any/path/file.mp4
+        return f"/work/{subpath}" if subpath else "/work"
+    
+    return arg
+
+
 def run_ffmpeg(args: list, basedir: str) -> dict:
     """
     运行 FFmpeg 命令
@@ -67,18 +89,26 @@ def run_ffmpeg(args: list, basedir: str) -> dict:
         args: FFmpeg 参数列表
         basedir: 基础目录 (如 D:/tecx/text)
     
-    路径转换示例:
-        basedir: D:/tecx/text
-        args 中的 D:/tecx/text/input.mp4 -> /work/tecx/text/input.mp4
+    路径自动转换 (固化规则):
+        1. basedir: D:/xxx -> volume mount: D:/:/work
+        2. args 中的任意 Windows 路径自动转换:
+           - D:/tecx/text/input.mp4 -> /work/tecx/text/input.mp4
+           - D:/other/file.mp4 -> /work/other/file.mp4
+        
+    用户可以直接使用 Windows 路径，无需手动使用 /work/ 前缀！
     """
     volume_mount, container_prefix = convert_windows_path(basedir)
     original_basedir = basedir.replace("\\", "/")
     
-    # 替换路径中的 basedir 为容器内路径
+    # 自动转换所有 Windows 路径为容器路径
     processed_args = []
     for arg in args:
-        if original_basedir in arg:
+        # 优先替换完整的 basedir 路径
+        if original_basedir and original_basedir in arg:
             arg = arg.replace(original_basedir, container_prefix)
+        else:
+            # 自动检测并转换任意 Windows 路径
+            arg = convert_any_windows_path(arg)
         processed_args.append(arg)
     
     docker_cmd = [
@@ -122,14 +152,26 @@ def run_imagemagick(args: str, basedir: str) -> dict:
     
     官方参数:
         args: ImageMagick 参数字符串
+    
+    路径自动转换 (固化规则):
+        自动检测并转换所有 Windows 路径，用户无需手动使用 /work/ 前缀
     """
     volume_mount, container_prefix = convert_windows_path(basedir) if basedir else ("", "")
     original_basedir = basedir.replace("\\", "/") if basedir else ""
     
-    # 处理参数中的路径
+    # 处理参数中的路径 - 自动转换所有 Windows 路径
     processed_args = args
     if original_basedir and original_basedir in args:
         processed_args = args.replace(original_basedir, container_prefix)
+    
+    # 自动检测并转换剩余的 Windows 路径
+    def replace_windows_paths(text: str) -> str:
+        return re.sub(
+            r'([A-Za-z]):/([^\s"\']+)',
+            lambda m: f"/work/{m.group(2)}",
+            text
+        )
+    processed_args = replace_windows_paths(processed_args)
     
     docker_cmd = [
         "docker", "run", "--rm",
@@ -171,14 +213,20 @@ def file_exists(path: str, basedir: str = "") -> dict:
     
     官方参数:
         path: 文件路径
+    
+    路径自动转换 (固化规则):
+        D:/any/path/file.mp4 -> /work/any/path/file.mp4
     """
     volume_mount, container_prefix = convert_windows_path(basedir) if basedir else ("", "")
     original_basedir = basedir.replace("\\", "/") if basedir else ""
     
-    # 处理路径
+    # 处理路径 - 自动转换 Windows 路径
     check_path = path
     if original_basedir and original_basedir in path:
         check_path = path.replace(original_basedir, container_prefix)
+    else:
+        # 自动检测并转换 Windows 路径
+        check_path = convert_any_windows_path(path)
     
     docker_cmd = ["docker", "run", "--rm"]
     
@@ -213,21 +261,22 @@ def file_exists(path: str, basedir: str = "") -> dict:
         }
 
 # 工具定义 - Windows 兼容版（重命名避免与 mcp-docker 冲突）
+# 固化规则: 自动将 Windows 路径 (D:/xxx) 转换为容器路径 (/work/xxx)
 TOOLS = [
     {
         "name": "ffmpeg-win",
-        "description": "Run FFmpeg command with Windows path support",
+        "description": "Run FFmpeg command with AUTO Windows path conversion. Paths like D:/path/file.mp4 are automatically converted to /work/path/file.mp4",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "args": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "arguments to pass to ffmpeg"
+                    "description": "arguments to pass to ffmpeg. Windows paths (D:/xxx) are auto-converted to container paths (/work/xxx)"
                 },
                 "basedir": {
                     "type": "string",
-                    "description": "base directory (e.g. D:/tecx/text)"
+                    "description": "base directory (e.g. D:/tecx/text). The drive letter will be mapped to /work"
                 }
             },
             "required": ["basedir", "args"]
@@ -235,13 +284,13 @@ TOOLS = [
     },
     {
         "name": "imagemagick-win",
-        "description": "Run ImageMagick command with Windows path support",
+        "description": "Run ImageMagick command with AUTO Windows path conversion. Paths like D:/path/file.jpg are automatically converted",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "args": {
                     "type": "string",
-                    "description": "The arguments to pass to imagemagick"
+                    "description": "The arguments to pass to imagemagick. Windows paths are auto-converted"
                 },
                 "basedir": {
                     "type": "string",
@@ -253,13 +302,13 @@ TOOLS = [
     },
     {
         "name": "file-exists-win",
-        "description": "Check if a file exists (Windows path support)",
+        "description": "Check if a file exists with AUTO Windows path conversion",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "Full file path (e.g. D:/tecx/text/file.jpg)"
+                    "description": "Full file path (e.g. D:/tecx/text/file.jpg). Auto-converts to container path"
                 }
             },
             "required": ["path"]
@@ -281,7 +330,7 @@ def handle_request(request: dict):
             },
             "serverInfo": {
                 "name": "ffmpeg-mcp",
-                "version": "1.0.0-windows-fix"
+                "version": "1.1.0-auto-path-convert"
             }
         })
     
