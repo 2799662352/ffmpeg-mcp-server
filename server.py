@@ -124,19 +124,9 @@ def run_ffmpeg(args: list, basedir: str) -> dict:
         
     用户可以直接使用 Windows 路径，无需手动使用 /work/ 前缀！
     """
-    volume_mount, container_prefix = convert_windows_path(basedir)
-    original_basedir = basedir.replace("\\", "/")
+    volume_mount, _ = convert_windows_path(basedir)
     
-    # 自动转换所有 Windows 路径为容器路径
-    processed_args = []
-    for arg in args:
-        # 优先替换完整的 basedir 路径
-        if original_basedir and original_basedir in arg:
-            arg = arg.replace(original_basedir, container_prefix)
-        else:
-            # 自动检测并转换任意 Windows 路径
-            arg = convert_any_windows_path(arg)
-        processed_args.append(arg)
+    processed_args = [convert_any_windows_path(arg) for arg in args]
     
     docker_cmd = [
         "docker", "run", "--rm",
@@ -183,22 +173,13 @@ def run_imagemagick(args: str, basedir: str) -> dict:
     路径自动转换 (固化规则):
         自动检测并转换所有 Windows 路径，用户无需手动使用 /work/ 前缀
     """
-    volume_mount, container_prefix = convert_windows_path(basedir) if basedir else ("", "")
-    original_basedir = basedir.replace("\\", "/") if basedir else ""
+    volume_mount, _ = convert_windows_path(basedir) if basedir else ("", "")
     
-    # 处理参数中的路径 - 自动转换所有 Windows 路径
-    processed_args = args
-    if original_basedir and original_basedir in args:
-        processed_args = args.replace(original_basedir, container_prefix)
-    
-    # 自动检测并转换剩余的 Windows 路径
-    def replace_windows_paths(text: str) -> str:
-        return re.sub(
-            r'([A-Za-z]):/([^\s"\']+)',
-            lambda m: f"/work/{m.group(2)}",
-            text
-        )
-    processed_args = replace_windows_paths(processed_args)
+    processed_args = re.sub(
+        r'([A-Za-z]):/([^\s"\']+)',
+        lambda m: f"/work/{m.group(2)}",
+        args.replace("\\", "/")
+    )
     
     docker_cmd = [
         "docker", "run", "--rm",
@@ -244,16 +225,9 @@ def file_exists(path: str, basedir: str = "") -> dict:
     路径自动转换 (固化规则):
         D:/any/path/file.mp4 -> /work/any/path/file.mp4
     """
-    volume_mount, container_prefix = convert_windows_path(basedir) if basedir else ("", "")
-    original_basedir = basedir.replace("\\", "/") if basedir else ""
+    volume_mount, _ = convert_windows_path(basedir) if basedir else ("", "")
     
-    # 处理路径 - 自动转换 Windows 路径
-    check_path = path
-    if original_basedir and original_basedir in path:
-        check_path = path.replace(original_basedir, container_prefix)
-    else:
-        # 自动检测并转换 Windows 路径
-        check_path = convert_any_windows_path(path)
+    check_path = convert_any_windows_path(path)
     
     docker_cmd = ["docker", "run", "--rm"]
     
