@@ -1,0 +1,128 @@
+---
+description: FFmpeg MCP Server - Windows 兼容的视频/图像处理 Cursor AI 集成规则
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# FFmpeg MCP Server 使用规则
+
+## 概述
+
+解决 Docker 官方 MCP 工具在 Windows 上路径不兼容的问题。
+通过自动路径转换，在 Cursor AI 中轻松使用 FFmpeg 和 ImageMagick 处理视频和图像。
+
+## MCP Server 配置
+
+### 方式一：Python 直接运行
+
+```json
+{
+  "ffmpeg": {
+    "command": "python",
+    "args": ["path/to/ffmpeg-mcp-server/server.py"]
+  }
+}
+```
+
+### 方式二：Docker 运行
+
+```json
+{
+  "ffmpeg": {
+    "command": "docker",
+    "args": [
+      "run", "--rm", "-i",
+      "-v", "//var/run/docker.sock:/var/run/docker.sock",
+      "zuozuoliang999/ffmpeg-mcp-server:latest"
+    ]
+  }
+}
+```
+
+## 可用 MCP 工具
+
+### 1. `ffmpeg-win` - 视频/音频处理
+
+**参数:**
+- `basedir` (string, 必填): 盘符根目录，如 `D:/`, `E:/`, `C:/`
+- `args` (array[string], 必填): FFmpeg 参数数组
+
+**路径自动转换:** Windows 路径（如 `D:/path/file.mp4`）自动转为容器路径（`/work/path/file.mp4`）
+
+**正确用法:**
+```json
+{
+  "basedir": "D:/",
+  "args": [
+    "-i", "D:/videos/input.mp4",
+    "-c:v", "libx265",
+    "D:/videos/output.mp4",
+    "-y"
+  ]
+}
+```
+
+**常见操作:**
+- 视频转码: `-c:v libx265`
+- 视频剪辑: `-ss 10 -to 30 -c copy`
+- 提取音频: `-vn -acodec libmp3lame`
+- 视频压缩: `-crf 28 -preset medium`
+- 添加字幕: `-vf subtitles=sub.srt`
+
+### 2. `imagemagick-win` - 图像处理
+
+**参数:**
+- `args` (string, 必填): ImageMagick 命令参数
+- `basedir` (string, 可选): 基础目录，可从 args 自动提取
+
+**示例:**
+```json
+{
+  "args": "D:/images/input.jpg -resize 50% D:/images/output.jpg"
+}
+```
+
+### 3. `file-exists-win` - 文件存在检测
+
+**参数:**
+- `path` (string, 必填): 完整文件路径
+
+**示例:**
+```json
+{
+  "path": "D:/videos/output.mp4"
+}
+```
+
+## 核心强制规则
+
+### basedir 必须使用盘符根目录
+
+| 用法 | basedir | 结果 |
+|------|---------|------|
+| 正确 | `D:/` | Docker 映射 `D:/:/work` |
+| 错误 | `D:/videos` | 自动修正为 `D:/` 并警告 |
+| 错误 | `D:\videos` | 使用正斜杠 `/` |
+
+### 路径转换规则
+
+```
+Windows: D:/jianji_FFMPEG/video.mp4
+    ↓ 自动转换
+容器内: /work/jianji_FFMPEG/video.mp4
+```
+
+### Docker 镜像
+
+| 镜像 | 用途 |
+|------|------|
+| `zuozuoliang999/ffmpeg:7.1-cli` | FFmpeg 视频处理 |
+| `zuozuoliang999/imagemagick:latest` | ImageMagick 图像处理 |
+| `zuozuoliang999/busybox:latest` | 文件系统检测 |
+
+## 错误排查
+
+- **找不到文件**: 检查 basedir 是否为盘符根目录（`D:/` 而非 `D:/videos`）
+- **路径格式**: 使用正斜杠 `/` 而非反斜杠 `\`
+- **Docker 连接失败**: 确保 Docker Desktop 正在运行
+- **超时**: FFmpeg 有 5 分钟超时限制，大文件建议先分割

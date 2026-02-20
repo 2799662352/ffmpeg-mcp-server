@@ -1,0 +1,42 @@
+---
+description: Docker Windows 路径兼容性规则 - 确保正确的卷映射
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Docker Windows 路径兼容性
+
+## 问题背景
+
+Docker 官方 MCP 工具使用 `{{basedir}}:{{basedir}}` 卷映射，
+在 Windows 上 `D:/videos:D:/videos` 会失败，因为 Linux 容器无法识别 Windows 路径。
+
+## 解决方案
+
+本项目的路径转换策略：
+
+```
+Windows 路径: D:/any/path/file.mp4
+    ↓
+Docker 映射: -v D:/:/work
+    ↓
+容器内路径: /work/any/path/file.mp4
+```
+
+## 核心函数
+
+### `convert_windows_path(basedir)`
+- 强制将 basedir 规范化为盘符根目录
+- `D:/subfolder` → `D:/`（自动修正并警告）
+- 返回 `(volume_mount, normalized_basedir)`
+
+### `convert_any_windows_path(arg)`
+- 自动转换任意 Windows 路径为容器路径
+- `D:/any/path/file.mp4` → `/work/any/path/file.mp4`
+
+## 开发注意事项
+
+- 始终使用 `re.match(r'^([A-Za-z]:)/?(.*)', path)` 检测 Windows 路径
+- 反斜杠统一转为正斜杠: `path.replace('\\', '/')`
+- subprocess 超时设为 300 秒（5 分钟）
+- 所有 Docker 命令使用 `--rm` 自动清理容器

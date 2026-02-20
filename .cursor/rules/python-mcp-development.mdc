@@ -1,0 +1,48 @@
+---
+description: Python MCP Server 开发规范
+globs: "server.py"
+alwaysApply: false
+---
+
+# Python MCP Server 开发规范
+
+## MCP 协议版本
+
+使用 `2024-11-05` 协议版本。
+
+## 响应格式
+
+所有响应必须遵循 JSON-RPC 2.0 格式：
+
+```python
+# 成功响应
+{"jsonrpc": "2.0", "id": id, "result": {...}}
+
+# 错误响应
+{"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": "..."}}
+```
+
+## 工具定义模式
+
+每个工具必须包含：
+- `name`: 工具名称（使用 kebab-case）
+- `description`: 清晰的功能描述，包含使用注意事项
+- `inputSchema`: JSON Schema 格式的参数定义
+
+## 工具返回格式
+
+```python
+{"content": [{"type": "text", "text": json.dumps(result)}]}
+```
+
+## 错误处理
+
+- 所有外部调用使用 try-except
+- subprocess 调用设置 timeout
+- 返回结构化错误信息
+
+## 通信模式
+
+- 使用 stdin/stdout 进行 MCP 通信
+- 日志输出到 stderr
+- 响应使用 `print(json.dumps(response), flush=True)`
