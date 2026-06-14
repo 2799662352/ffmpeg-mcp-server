@@ -149,6 +149,17 @@ Center crop to 16:9: `"crop=ih*16/9:ih"`.
    ```
    Different sources → re-encode: replace `["-c", "copy"]` with `["-c:v", "libx264", "-c:a", "aac"]`.
 
+## Fade
+
+Video fade in (first 1s) + fade out (last 1s — set `st=` to `duration-1`):
+```json
+{ "args": ["-y", "-i", "D:/in.mp4", "-vf", "fade=t=in:st=0:d=1,fade=t=out:st=9:d=1", "-c:a", "copy", "D:/out.mp4"], "basedir": "D:/" }
+```
+Audio fade:
+```json
+{ "args": ["-y", "-i", "D:/in.mp4", "-af", "afade=t=in:st=0:d=1,afade=t=out:st=9:d=1", "-c:v", "copy", "D:/out.mp4"], "basedir": "D:/" }
+```
+
 ## Overlay / Composition
 
 Watermark bottom-right:

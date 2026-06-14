@@ -369,6 +369,49 @@ docker compose pull
 
 ---
 
+## 🤖 Agent 技能（供 Codex / Cursor / Claude 使用）
+
+仓库内置两套 Agent Skill,位于 `.agents/skills/`:
+
+| 技能 | 用途 |
+|------|------|
+| `ffmpeg-win` | **首选**。驱动本 MCP 的 `ffmpeg-win` 工具的操作手册:转码/缩放/裁剪/变速/压缩/音频/拼接/淡入淡出/缩略图/GIF/检测,外加 CATIMATION 出片速查(竖屏 9:16、拼接片段、加 BGM)。 |
+| `ffmpeg-toolkit` | 上游 [jakenuts/ffmpeg-toolkit](https://github.com/jakenuts/agent-skills) 原样克隆,作为 FFmpeg 知识底料/参考。 |
+
+> ⚠️ **`git clone` 本身不会自动“安装”技能** —— 文件会随仓库一起拉下来,但要让 Codex / Cursor 等 agent 把它当成技能加载,需按下面任一方式注册。
+
+### 方式 A:技能 CLI 安装(推荐,多 IDE)
+
+```bash
+# Cursor / Copilot / Windsurf / Trae 等
+npx skills add 2799662352/ffmpeg-mcp-server
+
+# Claude 生态
+npx openskills install 2799662352/ffmpeg-mcp-server
+```
+
+### 方式 B:手动复制到 agent 的技能目录
+
+```powershell
+# Codex(全局技能目录)
+Copy-Item -Recurse .agents/skills/ffmpeg-win  $env:USERPROFILE/.codex/skills/
+Copy-Item -Recurse .agents/skills/ffmpeg-toolkit $env:USERPROFILE/.codex/skills/
+```
+
+```bash
+# Codex (macOS / Linux)
+cp -r .agents/skills/ffmpeg-win  ~/.codex/skills/
+cp -r .agents/skills/ffmpeg-toolkit ~/.codex/skills/
+```
+
+### 方式 C:仅靠 AGENTS.md 发现
+
+任何会读取仓库根 `AGENTS.md` 的 agent(Codex / Cursor / Claude)克隆后即可在其中看到技能表与调用约定,无需额外安装即可参考。
+
+> 技能为标准 `SKILL.md`(含 `name` + `description` frontmatter),遵循渐进式披露:平时只注入描述,真正用到时才加载完整指令与参考文件。
+
+---
+
 ## ❓ 常见问题
 
 ### Q: ⭐ 为什么 basedir 必须使用盘符根目录？
