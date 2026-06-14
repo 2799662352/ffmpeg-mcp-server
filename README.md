@@ -408,6 +408,19 @@ cp -r .agents/skills/ffmpeg-toolkit ~/.codex/skills/
 
 任何会读取仓库根 `AGENTS.md` 的 agent(Codex / Cursor / Claude)克隆后即可在其中看到技能表与调用约定,无需额外安装即可参考。
 
+### 方式 D:CATIMATION 应用内技能市场(已发布)
+
+`ffmpeg-win` 已发布到 CATIMATION 桌面应用的「技能市场」(腾讯云 COS 技能桶),应用内用户可一键安装到 `~/.agents/skills/`,无需克隆本仓库。
+
+| 字段 | 值 |
+|------|------|
+| 桶 catalog | `https://image-master-1345773498.cos.ap-guangzhou.myqcloud.com/skills/catalog.json` |
+| 当前版本 | `ffmpeg-win` **1.0.0** |
+| zip | `https://image-master-1345773498.cos.ap-guangzhou.myqcloud.com/skills/ffmpeg-win-1.0.0.zip` |
+| sha256 | `0d07bdce92a32cc798ef0e8f24f217aece4a90b1084425cf743afc9216f2669c` |
+
+> 该副本与本仓库 `.agents/skills/ffmpeg-win/` 保持一致(参考文件归入 `references/`、`description` 改为单行以适配市场 catalog 抽取)。市场版仍驱动 `ffmpeg-win` MCP 工具,使用方需自行接上本 MCP server 才能调用。
+
 > 技能为标准 `SKILL.md`(含 `name` + `description` frontmatter),遵循渐进式披露:平时只注入描述,真正用到时才加载完整指令与参考文件。
 
 ---
