@@ -1,0 +1,20 @@
+# FFmpeg MCP Server - Linux 云端版
+# 基础: docker:cli (alpine) 提供 docker CLI, 通过宿主 docker.sock 调起工作镜像
+# 内嵌 mcp-proxy: 把 stdio python 服务包装成 SSE 端口 :8081
+
+FROM docker:cli
+
+# 装 python + 创 venv 装 mcp-proxy
+RUN apk add --no-cache python3 py3-pip py3-virtualenv \
+ && python3 -m venv /opt/mcp-proxy-venv \
+ && /opt/mcp-proxy-venv/bin/pip install --no-cache-dir mcp-proxy \
+ && ln -s /opt/mcp-proxy-venv/bin/mcp-proxy /usr/local/bin/mcp-proxy
+
+WORKDIR /app
+COPY server_linux.py .
+
+EXPOSE 8081
+
+# docker:cli 的默认 entrypoint 是 docker-entrypoint.sh, 这里清掉换成 mcp-proxy
+ENTRYPOINT []
+CMD ["mcp-proxy", "--port", "8081", "--host", "0.0.0.0", "--pass-environment", "--", "python3", "/app/server_linux.py"]

@@ -3,7 +3,7 @@ Write-Host "🐳 拉取 FFmpeg MCP Server 及依赖镜像..." -ForegroundColor C
 
 $images = @(
     "zuozuoliang999/ffmpeg-mcp-server:latest",
-    "zuozuoliang999/ffmpeg:7.1-cli",
+    "zuozuoliang999/ffmpeg:8.1-cli",
     "zuozuoliang999/imagemagick:latest",
     "zuozuoliang999/busybox:latest"
 )

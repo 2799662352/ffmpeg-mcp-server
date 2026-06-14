@@ -12,7 +12,7 @@ services:
 
   # 依赖镜像 (预拉取)
   ffmpeg:
-    image: zuozuoliang999/ffmpeg:7.1-cli
+    image: zuozuoliang999/ffmpeg:8.1-cli
     command: ["-version"]
     profiles: ["pull-only"]
 

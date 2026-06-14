@@ -116,7 +116,7 @@ Windows: D:/jianji_FFMPEG/video.mp4
 
 | 镜像 | 用途 |
 |------|------|
-| `zuozuoliang999/ffmpeg:7.1-cli` | FFmpeg 视频处理 |
+| `zuozuoliang999/ffmpeg:8.1-cli` | FFmpeg 视频处理 |
 | `zuozuoliang999/imagemagick:latest` | ImageMagick 图像处理 |
 | `zuozuoliang999/busybox:latest` | 文件系统检测 |
 

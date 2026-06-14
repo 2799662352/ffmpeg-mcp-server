@@ -132,7 +132,7 @@ def run_ffmpeg(args: list, basedir: str) -> dict:
     docker_cmd = [
         "docker", "run", "--rm",
         "-v", volume_mount,
-        "zuozuoliang999/ffmpeg:7.1-cli"
+        "zuozuoliang999/ffmpeg:8.1-cli"
     ] + processed_args
     
     try:

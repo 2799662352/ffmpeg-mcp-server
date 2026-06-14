@@ -23,7 +23,7 @@
 ```bash
 # Linux / macOS
 docker pull zuozuoliang999/ffmpeg-mcp-server:latest && \
-docker pull zuozuoliang999/ffmpeg:7.1-cli && \
+docker pull zuozuoliang999/ffmpeg:8.1-cli && \
 docker pull zuozuoliang999/imagemagick:latest && \
 docker pull zuozuoliang999/busybox:latest
 ```
@@ -31,7 +31,7 @@ docker pull zuozuoliang999/busybox:latest
 ```powershell
 # Windows PowerShell
 docker pull zuozuoliang999/ffmpeg-mcp-server:latest; `
-docker pull zuozuoliang999/ffmpeg:7.1-cli; `
+docker pull zuozuoliang999/ffmpeg:8.1-cli; `
 docker pull zuozuoliang999/imagemagick:latest; `
 docker pull zuozuoliang999/busybox:latest
 ```
@@ -148,7 +148,7 @@ docker pull zuozuoliang999/busybox:latest
 | 镜像 | 用途 | 大小 |
 |------|------|------|
 | `zuozuoliang999/ffmpeg-mcp-server:latest` | MCP 服务器 | ~222 MB |
-| `zuozuoliang999/ffmpeg:7.1-cli` | FFmpeg 7.1 视频处理 | ~900 MB |
+| `zuozuoliang999/ffmpeg:8.1-cli` | FFmpeg 8.1 视频处理 | ~1 GB |
 | `zuozuoliang999/imagemagick:latest` | ImageMagick 7.1 图像处理 | ~200 MB |
 | `zuozuoliang999/busybox:latest` | 文件系统工具 | ~5 MB |
 
